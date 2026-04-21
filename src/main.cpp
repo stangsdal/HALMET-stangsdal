@@ -14,6 +14,7 @@
 #include <NMEA2000_esp32.h>
 #include <memory>
 
+#include "clipper_feature.h"
 #include "n2k_senders.h"
 #include "sensesp/net/discovery.h"
 #include "sensesp/sensors/analog_input.h"
@@ -58,6 +59,8 @@ Adafruit_SSD1306* display;
 
 // Store alarm states in an array for local display output
 bool alarm_states[4] = {false, false, false, false};
+float clipper_depth_display = NAN;
+float clipper_speed_display = NAN;
 
 // Set the ADS1115 GAIN to adjust the analog input voltage range.
 // On HALMET, this refers to the voltage range of the ADS1115 input
@@ -78,8 +81,8 @@ const uint8_t kDS1603LRxPin = 17;
 const uint16_t kDS1603LTankHeightMm = 1000;
 const uint8_t kDS1603LFilterSize = 15;
 const unsigned long kDS1603LReadIntervalMs = 2000;
-const char* kDS1603LSignalKPath = "/tanks/main/distance";
-const char* kDS1603LSignalKDescription = "DS1603L measured distance";
+const char* kDS1603LSignalKPath = "/tanks/fuel/0/currentLevel";
+const char* kDS1603LSignalKDescription = "Current fuel level (%)";
 
 /////////////////////////////////////////////////////////////////////
 // Test output pin configuration. If ENABLE_TEST_OUTPUT_PIN is defined,
@@ -187,6 +190,32 @@ void setup() {
   // Initialize the OLED display
   bool display_present = InitializeSSD1306(sensesp_app->get(), &display, i2c);
 
+#ifdef ENABLE_CLIPPER_INPUT
+  ///////////////////////////////////////////////////////////////////
+  // Clipper input feature path
+
+  ClipperInputSignals* clipper_signals =
+      SetupClipperFeature(nmea2000, true, true, kClipperHTClkPin,
+                kClipperHTDataOutPin, kClipperHTDataPin,
+                kClipperHTCSPin);
+
+  clipper_signals->depth_m.connect_to(new LambdaConsumer<float>(
+      [](float value) { clipper_depth_display = value; }));
+  clipper_signals->speed_mps.connect_to(new LambdaConsumer<float>(
+      [](float value) { clipper_speed_display = value; }));
+
+  if (display_present) {
+    event_loop()->onRepeat(1000, []() {
+      PrintValue(display, 1, "IP:", WiFi.localIP().toString());
+    });
+    event_loop()->onRepeat(1000, []() {
+      PrintValue(display, 2, "Depth", clipper_depth_display);
+      PrintValue(display, 3, "Speed", clipper_speed_display);
+      PrintValue(display, 4, "Mode", "CLIPPER");
+    });
+  }
+
+#else
   ///////////////////////////////////////////////////////////////////
   // Analog inputs
 
@@ -347,6 +376,8 @@ void setup() {
       PrintValue(display, 4, "Alarm", state_string);
     });
   }
+
+#endif  // ENABLE_CLIPPER_INPUT
 
   // To avoid garbage collecting all shared pointers created in setup(),
   // loop from here.
