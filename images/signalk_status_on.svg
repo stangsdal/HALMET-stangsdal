@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <style>
+      .sk-stroke-on { stroke: #000000; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      .sk-fill-on { fill: #000000; }
+    </style>
+  </defs>
+  
+  <!-- Outer circle -->
+  <circle cx="32" cy="32" r="28" fill="none" stroke="#000000" stroke-width="2"/>
+  
+  <!-- K symbol with wave inspired design -->
+  <g class="sk-stroke-on">
+    <!-- Vertical line of K -->
+    <line x1="18" y1="18" x2="18" y2="46"/>
+    
+    <!-- Top diagonal of K -->
+    <line x1="18" y1="26" x2="36" y2="14"/>
+    
+    <!-- Bottom diagonal of K -->
+    <line x1="18" y1="32" x2="36" y2="46"/>
+    
+    <!-- Wave element (signal indicator) - filled curved lines for connected -->
+    <path d="M 40 28 Q 42 26 44 28"/>
+    <path d="M 40 32 Q 44 28 48 32"/>
+    <path d="M 40 36 Q 42 38 44 36"/>
+  </g>
+  
+  <!-- Status indicator - ON (filled checkmark for connected) -->
+  <g class="sk-fill-on">
+    <line x1="50" y1="18" x2="52" y2="20" stroke-width="2"/>
+    <line x1="52" y1="20" x2="56" y2="14" stroke-width="2"/>
+  </g>
+  
+  <!-- Pulsing outer ring for active status -->
+  <circle cx="32" cy="32" r="28" fill="none" stroke="#000000" stroke-width="1" opacity="0.3">
+    <animate attributeName="r" values="28;32;28" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite"/>
+  </circle>
+</svg>

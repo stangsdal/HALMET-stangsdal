@@ -61,6 +61,7 @@ Adafruit_SSD1306* display;
 bool alarm_states[4] = {false, false, false, false};
 float clipper_depth_display = NAN;
 float clipper_speed_display = NAN;
+bool ds1603_connected_display = false;
 
 // Set the ADS1115 GAIN to adjust the analog input voltage range.
 // On HALMET, this refers to the voltage range of the ADS1115 input
@@ -189,6 +190,14 @@ void setup() {
 
   // Initialize the OLED display
   bool display_present = InitializeSSD1306(sensesp_app->get(), &display, i2c);
+
+  auto ws_client = sensesp_app->get()->get_ws_client();
+  if (display_present && ws_client != nullptr) {
+    event_loop()->onRepeat(1000, [ws_client]() {
+      PrintStatusLine(display, ws_client->is_connected(),
+                      ds1603_connected_display);
+    });
+  }
 
 #ifdef ENABLE_CLIPPER_INPUT
   ///////////////////////////////////////////////////////////////////
@@ -357,6 +366,9 @@ void setup() {
   ds1603l_sensor->connect_to(new SKOutputFloat(
       kDS1603LSignalKPath,
       new SKMetadata("m", kDS1603LSignalKDescription)));
+  event_loop()->onRepeat(1000, [ds1603l_sensor]() {
+    ds1603_connected_display = ds1603l_sensor->is_connected();
+  });
 
   ///////////////////////////////////////////////////////////////////
   // Display setup

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 80" width="140" height="80">
+  <defs>
+    <style>
+      .sk-stroke-off { stroke: #888888; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .sk-stroke-on { stroke: #000000; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      .sk-fill-on { fill: #000000; }
+      .label { font-size: 12px; font-family: Arial, sans-serif; fill: #333333; text-anchor: middle; }
+    </style>
+  </defs>
+  
+  <!-- OFF State (Left) -->
+  <g id="signalk-off">
+    <!-- Outer circle -->
+    <circle cx="24" cy="32" r="18" fill="none" stroke="#aaaaaa" stroke-width="1.5"/>
+    
+    <!-- K symbol -->
+    <g class="sk-stroke-off">
+      <line x1="14" y1="18" x2="14" y2="46"/>
+      <line x1="14" y1="26" x2="28" y2="16"/>
+      <line x1="14" y1="32" x2="28" y2="46"/>
+      
+      <!-- Wave element -->
+      <path d="M 32 26 Q 34 24 36 26"/>
+      <path d="M 32 32 Q 36 28 40 32"/>
+      <path d="M 32 38 Q 34 40 36 38"/>
+    </g>
+    
+    <!-- Status indicator - OFF (X) -->
+    <line x1="38" y1="18" x2="42" y2="22" class="sk-stroke-off" stroke-width="1.5"/>
+    <line x1="42" y1="18" x2="38" y2="22" class="sk-stroke-off" stroke-width="1.5"/>
+  </g>
+  
+  <!-- ON State (Right) -->
+  <g id="signalk-on">
+    <!-- Outer circle -->
+    <circle cx="100" cy="32" r="18" fill="none" stroke="#000000" stroke-width="2"/>
+    
+    <!-- K symbol -->
+    <g class="sk-stroke-on">
+      <line x1="90" y1="18" x2="90" y2="46"/>
+      <line x1="90" y1="26" x2="104" y2="16"/>
+      <line x1="90" y1="32" x2="104" y2="46"/>
+      
+      <!-- Wave element -->
+      <path d="M 108 26 Q 110 24 112 26"/>
+      <path d="M 108 32 Q 112 28 116 32"/>
+      <path d="M 108 38 Q 110 40 112 38"/>
+    </g>
+    
+    <!-- Status indicator - ON (checkmark) -->
+    <line x1="114" y1="22" x2="116" y2="24" class="sk-stroke-on" stroke-width="2"/>
+    <line x1="116" y1="24" x2="120" y2="18" class="sk-stroke-on" stroke-width="2"/>
+    
+    <!-- Pulsing outer ring -->
+    <circle cx="100" cy="32" r="18" fill="none" stroke="#000000" stroke-width="1" opacity="0.3">
+      <animate attributeName="r" values="18;22;18" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Labels -->
+  <text x="24" y="65" class="label">OFF</text>
+  <text x="100" y="65" class="label">ON</text>
+</svg>
