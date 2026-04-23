@@ -22,6 +22,12 @@ const int kDigitalInputPin2 = GPIO_NUM_25;
 const int kDigitalInputPin3 = GPIO_NUM_27;
 const int kDigitalInputPin4 = GPIO_NUM_26;
 
+// Clipper HT1621 sniff pins (SPI slave mode)
+const gpio_num_t kClipperHTDataPin = GPIO_NUM_12;
+const gpio_num_t kClipperHTDataOutPin = GPIO_NUM_13;
+const gpio_num_t kClipperHTClkPin = GPIO_NUM_14;
+const gpio_num_t kClipperHTCSPin = GPIO_NUM_15;
+
 
 
 

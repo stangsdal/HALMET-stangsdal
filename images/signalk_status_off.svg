@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <style>
+      .sk-stroke-off { stroke: #888888; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+  
+  <!-- Outer circle -->
+  <circle cx="32" cy="32" r="28" fill="none" stroke="#aaaaaa" stroke-width="1.5"/>
+  
+  <!-- K symbol with wave inspired design -->
+  <g class="sk-stroke-off">
+    <!-- Vertical line of K -->
+    <line x1="18" y1="18" x2="18" y2="46"/>
+    
+    <!-- Top diagonal of K -->
+    <line x1="18" y1="26" x2="36" y2="14"/>
+    
+    <!-- Bottom diagonal of K -->
+    <line x1="18" y1="32" x2="36" y2="46"/>
+    
+    <!-- Wave element (signal indicator) - curved lines for disconnected -->
+    <path d="M 40 28 Q 42 26 44 28"/>
+    <path d="M 40 32 Q 44 28 48 32"/>
+    <path d="M 40 36 Q 42 38 44 36"/>
+  </g>
+  
+  <!-- Status indicator - OFF (X mark for disconnected) -->
+  <line x1="50" y1="14" x2="54" y2="18" class="sk-stroke-off" stroke-width="1.5"/>
+  <line x1="54" y1="14" x2="50" y2="18" class="sk-stroke-off" stroke-width="1.5"/>
+</svg>
