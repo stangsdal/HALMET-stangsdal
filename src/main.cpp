@@ -15,32 +15,17 @@
 #include <memory>
 
 #include "clipper_feature.h"
-#include "n2k_senders.h"
 #include "sensesp/net/discovery.h"
-#include "sensesp/sensors/analog_input.h"
-#include "sensesp/sensors/digital_input.h"
-#include "sensesp/sensors/sensor.h"
-#include "sensesp/signalk/signalk_output.h"
 #include "sensesp/system/lambda_consumer.h"
 #include "sensesp/system/system_status_led.h"
-#include "sensesp/transforms/lambda_transform.h"
-#include "sensesp/transforms/linear.h"
-#include "sensesp/ui/config_item.h"
 #include "sensesp_app_builder.h"
 #define BUILDER_CLASS SensESPAppBuilder
 
-#include "halmet_analog.h"
 #include "halmet_const.h"
-#include "halmet_digital.h"
 #include "halmet_display.h"
 #include "halmet_serial.h"
-#if __has_include("DS1603LSensor.h")
-#include "DS1603LSensor.h"
-#elif __has_include("../components/sensesp_ds1603l_sensor/include/DS1603LSensor.h")
-#include "../components/sensesp_ds1603l_sensor/include/DS1603LSensor.h"
-#else
-#error "DS1603LSensor.h not found. Verify components/sensesp_ds1603l_sensor is available."
-#endif
+#include "standard_mode_defaults.h"
+#include "standard_mode.h"
 #include "sensesp/net/http_server.h"
 #include "sensesp/net/networking.h"
 
@@ -75,15 +60,6 @@ bool ds1603_connected_display = false;
 // GAIN_SIXTEEN:   16x gain  +/- 0.256V  1 bit = 0.125mV  0.0078125mV
 
 const adsGain_t kADS1115Gain = GAIN_ONE;
-
-// DS1603L tuning values
-const uint8_t kDS1603LTxPin = 16;
-const uint8_t kDS1603LRxPin = 17;
-const uint16_t kDS1603LTankHeightMm = 1000;
-const uint8_t kDS1603LFilterSize = 15;
-const unsigned long kDS1603LReadIntervalMs = 2000;
-const char* kDS1603LSignalKPath = "/tanks/fuel/0/currentLevel";
-const char* kDS1603LSignalKDescription = "Current fuel level (%)";
 
 /////////////////////////////////////////////////////////////////////
 // Test output pin configuration. If ENABLE_TEST_OUTPUT_PIN is defined,
@@ -121,7 +97,7 @@ void setup() {
                     ->set_wifi_client("Stangsdal", "CarpeDiem")
                     //->set_sk_server("192.168.10.3", 80)
                     // EDIT: Enable OTA updates with a password.
-                    //->enable_ota("my_ota_password")
+                    ->enable_ota("red_deer")
                     ->get_app();
 
   // initialize the I2C bus
@@ -225,169 +201,26 @@ void setup() {
   }
 
 #else
-  ///////////////////////////////////////////////////////////////////
-  // Analog inputs
+  StandardModeConfig standard_mode_cfg;
+  standard_mode_cfg.nmea2000 = nmea2000;
+  standard_mode_cfg.ads1115 = ads1115;
+  standard_mode_cfg.display = display;
+  standard_mode_cfg.display_present = display_present;
+  standard_mode_cfg.alarm_states = alarm_states;
+  standard_mode_cfg.ds1603_connected_display = &ds1603_connected_display;
+    standard_mode_cfg.ds1603_tx_pin = kDefaultDS1603LTxPin;
+    standard_mode_cfg.ds1603_rx_pin = kDefaultDS1603LRxPin;
+    standard_mode_cfg.ds1603_tank_height_mm = kDefaultDS1603LTankHeightMm;
+    standard_mode_cfg.ds1603_filter_size = kDefaultDS1603LFilterSize;
+    standard_mode_cfg.ds1603_read_interval_ms = kDefaultDS1603LReadIntervalMs;
+    standard_mode_cfg.fuel_tank_capacity_m3 = kDefaultFuelTankCapacityM3;
+    standard_mode_cfg.fuel_tank_capacity_liters = kDefaultFuelTankCapacityLiters;
+    standard_mode_cfg.temp_scale_k_per_volt = kDefaultTempScaleKPerVolt;
+    standard_mode_cfg.temp_offset_k = kDefaultTempOffsetK;
+  standard_mode_cfg.raw_water_flow_pulses_per_liter =
+      kDefaultRawWaterFlowPulsesPerLiter;
 
-  bool enable_signalk_output = true;
-
-  // Connect the tank senders.
-  // EDIT: To enable more tanks, uncomment the lines below.
-  auto tank_a1_volume = ConnectTankSender(ads1115, 0, "Fuel", "fuel.main", 3000,
-                                          enable_signalk_output);
-  // auto tank_a2_volume = ConnectTankSender(ads1115, 1, "A2");
-  // auto tank_a3_volume = ConnectTankSender(ads1115, 2, "A3");
-  // auto tank_a4_volume = ConnectTankSender(ads1115, 3, "A4");
-
-#ifdef ENABLE_NMEA2000_OUTPUT
-  // Tank 1, instance 0. Capacity 200 liters. You can change the capacity
-  // in the web UI as well.
-  // EDIT: Make sure this matches your tank configuration above.
-  N2kFluidLevelSender* tank_a1_sender = new N2kFluidLevelSender(
-      "/Tanks/Fuel/NMEA 2000", 0, N2kft_Fuel, 200, nmea2000);
-
-  ConfigItem(tank_a1_sender)
-      ->set_title("Tank A1 NMEA 2000")
-      ->set_description("NMEA 2000 tank sender for tank A1")
-      ->set_sort_order(3005);
-
-  tank_a1_volume->connect_to(&(tank_a1_sender->tank_level_));
-#endif  // ENABLE_NMEA2000_OUTPUT
-
-  if (display_present) {
-    // EDIT: Duplicate the lines below to make the display show all your tanks.
-    tank_a1_volume->connect_to(new LambdaConsumer<float>(
-        [](float value) { PrintValue(display, 2, "Tank A1", 100 * value); }));
-  }
-
-  // Read the voltage level of analog input A2
-  auto a2_voltage = new ADS1115VoltageInput(ads1115, 1, "/Voltage A2");
-
-  ConfigItem(a2_voltage)
-      ->set_title("Analog Voltage A2")
-      ->set_description("Voltage level of analog input A2")
-      ->set_sort_order(3000);
-
-  a2_voltage->connect_to(new LambdaConsumer<float>(
-      [](float value) { debugD("Voltage A2: %f", value); }));
-
-  // If you want to output something else than the voltage value,
-  // you can insert a suitable transform here.
-  // For example, to convert the voltage to a distance with a conversion
-  // factor of 0.17 m/V, you could use the following code:
-  // auto a2_distance = new Linear(0.17, 0.0);
-  // a2_voltage->connect_to(a2_distance);
-
-  a2_voltage->connect_to(
-      new SKOutputFloat("/sensors/a2/voltage",
-                        new SKMetadata("V", "Analog Voltage A2")));
-  // Example of how to output the distance value to Signal K.
-  // a2_distance->connect_to(
-  //     new SKOutputFloat("sensors.a2.distance", "Analog Distance A2",
-  //                       new SKMetadata("m", "Analog Distance A2")));
-
-  ///////////////////////////////////////////////////////////////////
-  // Digital alarm inputs
-
-  // EDIT: More alarm inputs can be defined by duplicating the lines below.
-  // Make sure to not define a pin for both a tacho and an alarm.
-  auto alarm_d2_input = ConnectAlarmSender(kDigitalInputPin2, "D2");
-  auto alarm_d3_input = ConnectAlarmSender(kDigitalInputPin3, "D3");
-  // auto alarm_d4_input = ConnectAlarmSender(kDigitalInputPin4, "D4");
-
-  // Update the alarm states based on the input value changes.
-  // EDIT: If you added more alarm inputs, uncomment the respective lines below.
-  alarm_d2_input->connect_to(
-      new LambdaConsumer<bool>([](bool value) { alarm_states[1] = value; }));
-  // In this example, alarm_d3_input is active low, so invert the value.
-  auto alarm_d3_inverted = alarm_d3_input->connect_to(
-      new LambdaTransform<bool, bool>([](bool value) { return !value; }));
-  alarm_d3_inverted->connect_to(
-      new LambdaConsumer<bool>([](bool value) { alarm_states[2] = value; }));
-  // alarm_d4_input->connect_to(
-  //     new LambdaConsumer<bool>([](bool value) { alarm_states[3] = value; }));
-
-  // EDIT: This example connects the D2 alarm input to the low oil pressure
-  // warning. Modify according to your needs.
-  N2kEngineParameterDynamicSender* engine_dynamic_sender =
-      new N2kEngineParameterDynamicSender("/NMEA 2000/Engine 1 Dynamic", 0,
-                                          nmea2000);
-
-  ConfigItem(engine_dynamic_sender)
-      ->set_title("Engine 1 Dynamic")
-      ->set_description("NMEA 2000 dynamic engine parameters for engine 1")
-      ->set_sort_order(3010);
-
-  alarm_d2_input->connect_to(engine_dynamic_sender->low_oil_pressure_);
-
-  // This is just an example -- normally temperature alarms would not be
-  // active-low (inverted).
-  alarm_d3_inverted->connect_to(engine_dynamic_sender->over_temperature_);
-
-  // FIXME: Transmit the alarms over SK as well.
-
-  ///////////////////////////////////////////////////////////////////
-  // Digital tacho inputs
-
-  // Connect the tacho senders. Engine name is "main".
-  // EDIT: More tacho inputs can be defined by duplicating the line below.
-  auto tacho_d1_frequency = ConnectTachoSender(kDigitalInputPin1, "main");
-
-  // Connect outputs to the N2k senders.
-  // EDIT: Make sure this matches your tacho configuration above.
-  //       Duplicate the lines below to connect more tachos, but be sure to
-  //       use different engine instances.
-  N2kEngineParameterRapidSender* engine_rapid_sender =
-      new N2kEngineParameterRapidSender("/NMEA 2000/Engine 1 Rapid Update", 0,
-                                        nmea2000);  // Engine 1, instance 0
-
-  ConfigItem(engine_rapid_sender)
-      ->set_title("Engine 1 Rapid Update")
-      ->set_description("NMEA 2000 rapid update engine parameters for engine 1")
-      ->set_sort_order(3015);
-
-  tacho_d1_frequency->connect_to(&(engine_rapid_sender->engine_speed_));
-
-  if (display_present) {
-    tacho_d1_frequency->connect_to(new LambdaConsumer<float>(
-        [](float value) { PrintValue(display, 3, "RPM D1", 60 * value); }));
-  }
-
-  ///////////////////////////////////////////////////////////////////
-  // DS1603L ultrasonic sensor
-  auto ds1603l_config = std::make_shared<DS1603LConfig>();
-  ds1603l_config->tx_pin = kDS1603LTxPin;
-  ds1603l_config->rx_pin = kDS1603LRxPin;
-  ds1603l_config->read_timeout_ms = 500;
-  ds1603l_config->tank_height_mm = kDS1603LTankHeightMm;
-  ds1603l_config->filter_size = kDS1603LFilterSize;
-
-  // Read at 2-second intervals and publish distance in meters.
-  auto ds1603l_sensor = new DS1603LSensor(ds1603l_config, kDS1603LReadIntervalMs);
-  ds1603l_sensor->connect_to(new SKOutputFloat(
-      kDS1603LSignalKPath,
-      new SKMetadata("m", kDS1603LSignalKDescription)));
-  event_loop()->onRepeat(1000, [ds1603l_sensor]() {
-    ds1603_connected_display = ds1603l_sensor->is_connected();
-  });
-
-  ///////////////////////////////////////////////////////////////////
-  // Display setup
-
-  // Connect the outputs to the display
-  if (display_present) {
-    event_loop()->onRepeat(1000, []() {
-      PrintValue(display, 1, "IP:", WiFi.localIP().toString());
-    });
-
-    // Create a poor man's "christmas tree" display for the alarms
-    event_loop()->onRepeat(1000, []() {
-      char state_string[5] = {};
-      for (int i = 0; i < 4; i++) {
-        state_string[i] = alarm_states[i] ? '*' : '_';
-      }
-      PrintValue(display, 4, "Alarm", state_string);
-    });
-  }
+  SetupStandardMode(standard_mode_cfg);
 
 #endif  // ENABLE_CLIPPER_INPUT
 

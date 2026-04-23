@@ -11,16 +11,26 @@ To get started with the firmware, follow the generic SensESP [Getting Started](h
 
 ## Default HALMET Mode
 
-Default behavior is unchanged:
+Default mode is built with environment `stangsdal` and configures the following mappings:
 
-- Engine RPM from D1
-- Fuel sender from A1
-- DS1603L tank sensor
-- Alarm on D2
+- d1 (GPIO 23): Engine RPM
+- d2 (GPIO 25): Oil pressure alarm
+- d3 (GPIO 27): Raw water flow pulse input
+- a1 (ADS1115 ch0): Raw water temperature
+- a2 (ADS1115 ch1): Coolant temperature
+- c1 (DS1603L): Fuel level + volume
 
-This mode is built with environment `stangsdal`.
+Implementation entry point for this mode is in `src/standard_mode.cpp`.
 
 ## Pin Mapping
+
+### HALMET Inputs
+
+- D1: GPIO 23 (tachometer)
+- D2: GPIO 25 (oil pressure alarm)
+- D3: GPIO 27 (raw water flow)
+- A1: ADS1115 channel 0 (raw water temperature)
+- A2: ADS1115 channel 1 (coolant temperature)
 
 ### DS1603L Ultrasonic Tank Sensor
 
@@ -63,6 +73,18 @@ CAN remains on HALMET CAN pins (RX 18, TX 19).
 
 ## Signal K Outputs
 
+### Standard Mode (`stangsdal`)
+
+- `propulsion.main.revolutions` (d1)
+- `propulsion.main.oilPressureAlarm` (d2)
+- `propulsion.main.rawWaterFlow` (d3)
+- `propulsion.main.rawWaterTemperature` (a1)
+- `propulsion.main.coolantTemperature` (a2)
+- `tanks.fuel.0.currentLevel` (c1)
+- `tanks.fuel.0.currentVolume` (c1)
+
+### Clipper Mode (`stangsdal_clipper`)
+
 Clipper mode publishes:
 
 - `environment.depth.belowKeel`
@@ -82,6 +104,19 @@ These are intended for setup verification and sea-trial diagnostics.
 
 ## NMEA 2000 Outputs
 
+### Standard Mode (`stangsdal`)
+
+- PGN 127488 Engine Parameters, Rapid Update (engine speed from d1)
+- PGN 127489 Engine Parameters, Dynamic:
+	- low oil pressure status from d2
+	- engine temperature from a2
+- PGN 130312 Temperature:
+	- raw water temperature from a1
+	- coolant temperature from a2
+- PGN 127505 Fluid Level (fuel level from c1)
+
+### Clipper Mode (`stangsdal_clipper`)
+
 Clipper mode transmits:
 
 - Water Depth
@@ -98,7 +133,9 @@ Implemented protections in the Clipper decoder path:
 - Per-signal stale decay to NA
 - Frame-quality gate requiring consecutive valid frames before publishing after startup/recovery
 
-Tunable compile-time parameters in `src/clipper_feature.h`:
+Tunable compile-time parameters in the external Clipper module header:
+
+- `https://github.com/stangsdal/sensesp_clipper_input/blob/main/include/clipper_feature.h`
 
 - `CLIPPER_DATA_TIMEOUT_MS` (default: 5000)
 - `CLIPPER_MIN_VALID_FRAMES` (default: 3)
@@ -115,5 +152,23 @@ Use your PlatformIO environment as usual, for example:
 
 ## Customization
 
-For custom wiring and feature setup, edit `src/main.cpp`.
-Parts intended for customization are marked with `EDIT:` comments.
+For custom wiring and feature setup:
+
+- Common app/bootstrap setup: `src/main.cpp`
+- Standard mode sensor mapping: `src/standard_mode.cpp`
+- Clipper mode feature wiring lives in external module repository:
+	`https://github.com/stangsdal/sensesp_clipper_input`
+
+Some customizable parts are marked with `EDIT:` comments.
+
+## Standard Mode Calibration Defaults
+
+Defined in `src/standard_mode_defaults.h` and applied by `src/standard_mode.cpp`:
+
+- Temperature conversion (A1/A2):
+	- `kDefaultTempScaleKPerVolt = 20.0`
+	- `kDefaultTempOffsetK = 273.15`
+- Raw water flow conversion:
+	- `kDefaultRawWaterFlowPulsesPerLiter = 450.0`
+- Fuel tank capacity:
+	- `kDefaultFuelTankCapacityM3 = 0.2` (200 L)

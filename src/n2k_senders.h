@@ -310,6 +310,76 @@ const String ConfigSchema(const N2kEngineParameterDynamicSender& obj) {
 }
 
 /**
+ * @brief Transmit NMEA 2000 PGN 130312: Temperature
+ *
+ */
+class N2kTemperatureSender : public sensesp::FileSystemSaveable {
+ public:
+  N2kTemperatureSender(String config_path, uint8_t temp_instance,
+                       tN2kTempSource temp_source, tNMEA2000* nmea2000)
+      : sensesp::FileSystemSaveable{config_path},
+        temp_instance_{temp_instance},
+        temp_source_{temp_source},
+        nmea2000_{nmea2000},
+        repeat_interval_{1000},
+        expiry_{5000} {
+    initialize_members(repeat_interval_, expiry_);
+
+    temperature_.connect_to(temperature_k_);
+
+    sensesp::event_loop()->onRepeat(repeat_interval_, [this]() {
+      tN2kMsg N2kMsg;
+      SetN2kTemperature(N2kMsg, sid_++, temp_instance_, temp_source_,
+                        temperature_k_->get());
+      this->nmea2000_->SendMsg(N2kMsg);
+    });
+  }
+
+  virtual bool from_json(const JsonObject& config) override {
+    if (!config["temp_instance"].is<int>() ||
+        !config["temp_source"].is<int>()) {
+      return false;
+    }
+    temp_instance_ = config["temp_instance"];
+    temp_source_ = static_cast<tN2kTempSource>((int)config["temp_source"]);
+    return true;
+  }
+
+  virtual bool to_json(JsonObject& config) override {
+    config["temp_instance"] = temp_instance_;
+    config["temp_source"] = static_cast<int>(temp_source_);
+    return true;
+  }
+
+  sensesp::ObservableValue<double> temperature_;  // Kelvin
+
+ protected:
+  unsigned int repeat_interval_;
+  unsigned int expiry_;
+  tNMEA2000* nmea2000_;
+  uint8_t temp_instance_;
+  tN2kTempSource temp_source_;
+  uint8_t sid_ = 0;
+  std::shared_ptr<sensesp::RepeatExpiring<double>> temperature_k_;
+
+ private:
+  void initialize_members(unsigned int repeat_interval, unsigned int expiry) {
+    temperature_k_ = std::make_shared<sensesp::RepeatExpiring<double>>(
+        repeat_interval, expiry);
+  }
+};
+
+const String ConfigSchema(const N2kTemperatureSender& obj) {
+  return R"###({
+    "type": "object",
+    "properties": {
+      "temp_instance": { "title": "Temperature instance", "type": "integer", "description": "Temperature instance number (0-252)" },
+      "temp_source": { "title": "Temperature source", "type": "integer", "description": "NMEA 2000 temperature source enum" }
+    }
+  })###";
+}
+
+/**
  * @brief Transmit NMEA 2000 PGN 127505: Fluid Level
  *
  */
