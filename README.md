@@ -60,6 +60,84 @@ It enables:
 
 - `-D ENABLE_CLIPPER_INPUT`
 
+### Original Project Description (Clipper)
+
+The Clipper project goal is to make legacy Clipper instrument data available on
+modern boat data networks without changing the original Clipper display system.
+
+The implementation reads HT1621 display bus traffic from the Clipper instrument,
+decodes the visible values, and republishes them to:
+
+- Signal K (for dashboards, logging, and integrations)
+- NMEA 2000 (for chartplotters and marine devices on CAN)
+
+This approach is non-invasive from a functional perspective: Clipper remains the
+source instrument, while HALMET acts as a protocol bridge and data publisher.
+
+Scope of Clipper mode in this repository:
+
+- Decode depth, speed-through-water, trip, and total log
+- Publish decoded values in SI units
+- Add diagnostics for data quality and stale-data detection
+- Support commissioning and sea-trial verification through debug telemetry
+
+Out of scope in Clipper mode:
+
+- NMEA 0183 transport
+- Writing back to or controlling Clipper instrument behavior
+
+### Clipper Architecture Overview
+
+At runtime, the Clipper pipeline consists of these layers:
+
+1. HT1621 frame capture (ESP32 SPI slave sniffing)
+2. Frame decoding and unit conversion
+3. Signal quality gating (minimum valid frame streak)
+4. Stale-value invalidation (timeout to NA)
+5. Publication to Signal K and NMEA 2000
+
+External module used by HALMET:
+
+- `https://github.com/stangsdal/sensesp_clipper_input`
+
+### Hardware Integration Notes
+
+For stable decoding, keep wiring short and consistent ground reference between
+HALMET and the tapped Clipper signal lines.
+
+Recommended installation workflow:
+
+1. Connect GND first
+2. Connect HT CLK and HT CS
+3. Connect HT DATA and HT DATA OUT
+4. Boot in Clipper environment and verify debug lock telemetry
+5. Validate live value updates before sea trial
+
+### Commissioning Checklist (Clipper)
+
+1. Build environment `stangsdal_clipper`
+2. Confirm Signal K keys update:
+	- `environment.depth.belowKeel`
+	- `navigation.speedThroughWater`
+	- `navigation.trip.log`
+	- `navigation.log`
+3. Confirm NMEA 2000 recipients see depth/speed/log values
+4. Confirm diagnostics:
+	- `sensors.clipper.debug.locked` transitions to `1`
+	- `sensors.clipper.debug.consecutiveValidFrames` increases
+	- `sensors.clipper.debug.lastValidAge` stays low during active traffic
+5. Simulate disconnect or idle and verify stale values decay to NA
+
+### Acceptance Criteria
+
+Clipper project can be considered complete for deployment when:
+
+- Decoded values match Clipper display readings within expected tolerance
+- Signal K and NMEA 2000 outputs remain stable during normal operation
+- Timeout handling correctly clears stale data
+- Startup/recovery does not publish unstable garbage frames
+- Sea-trial logs show reliable continuity for depth/speed/log channels
+
 ### Clipper HT1621 Display Interface
 
 Clipper HT1621 sniff pins are defined in `src/halmet_const.h`:
