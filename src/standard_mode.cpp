@@ -165,7 +165,7 @@ sensesp::FloatProducer* SetupTachoInput(const StandardModeConfig& cfg) {
 }
 
 void SetupFuelTank(const StandardModeConfig& cfg) {
-  auto ds1603l_config = std::make_shared<DS1603LConfig>();
+  auto ds1603l_config = std::make_shared<sensesp::DS1603LConfig>();
   ds1603l_config->tx_pin = cfg.ds1603_tx_pin;
   ds1603l_config->rx_pin = cfg.ds1603_rx_pin;
   ds1603l_config->read_timeout_ms = 500;
@@ -173,7 +173,7 @@ void SetupFuelTank(const StandardModeConfig& cfg) {
   ds1603l_config->filter_size = cfg.ds1603_filter_size;
 
   auto* ds1603l_sensor =
-      new DS1603LSensor(ds1603l_config, cfg.ds1603_read_interval_ms);
+      new sensesp::DS1603LSensor(ds1603l_config, cfg.ds1603_read_interval_ms);
 
   auto* fuel_level_ratio = ds1603l_sensor->connect_to(
       new LambdaTransform<float, float>([cfg](float distance_m) {

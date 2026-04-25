@@ -4,7 +4,7 @@
 		{
 			"label": "Build firmware (PlatformIO)",
 			"type": "shell",
-			"command": "platformio",
+			"command": "~/.platformio/penv/bin/pio",
 			"args": [
 				"run"
 			],
