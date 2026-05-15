@@ -11,10 +11,11 @@
 #include <Adafruit_ADS1X15.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <N2kMessages.h>
 #include <NMEA2000_esp32.h>
 #include <memory>
 
-#include "clipper_feature.h"
+#include <HALMET_ClipperDuet.h>
 #include "sensesp/net/discovery.h"
 #include "sensesp/system/lambda_consumer.h"
 #include "sensesp/system/system_status_led.h"
@@ -48,6 +49,19 @@ float clipper_depth_display = NAN;
 float clipper_speed_display = NAN;
 bool ds1603_connected_display = false;
 
+#ifdef ENABLE_CLIPPER_INPUT
+hamlet::clipperduet::Decoder clipper_decoder;
+uint8_t clipper_sid = 0;
+#if defined(HAMLET_CLIPPERDUET_HAS_SPI_CAPTURE)
+hamlet::clipperduet::Esp32SpiCapture clipper_capture({
+  static_cast<int8_t>(kClipperHTClkPin),
+  static_cast<int8_t>(kClipperHTDataOutPin),
+  static_cast<int8_t>(kClipperHTDataPin),
+  static_cast<int8_t>(kClipperHTCSPin),
+});
+#endif
+#endif
+
 // Set the ADS1115 GAIN to adjust the analog input voltage range.
 // On HALMET, this refers to the voltage range of the ADS1115 input
 // AFTER the 33.3/3.3 voltage divider.
@@ -67,7 +81,7 @@ const adsGain_t kADS1115Gain = GAIN_ONE;
 // If this output and GND are connected to one of the digital inputs, it can
 // be used to test that the frequency counter functionality is working.
 #define ENABLE_TEST_OUTPUT_PIN
-#ifdef ENABLE_TEST_OUTPUT_PIN
+#if defined(ENABLE_TEST_OUTPUT_PIN) && !defined(ENABLE_CLIPPER_INPUT)
 const int kTestOutputPin = GPIO_NUM_33;
 // With the default pulse rate of 100 pulses per revolution (configured in
 // halmet_digital.cpp), this frequency corresponds to 3.8 r/s or about 228 rpm.
@@ -111,7 +125,7 @@ void setup() {
   bool ads_initialized = ads1115->begin(kADS1115Address, i2c);
   debugD("ADS1115 initialized: %d", ads_initialized);
 
-#ifdef ENABLE_TEST_OUTPUT_PIN
+#if defined(ENABLE_TEST_OUTPUT_PIN) && !defined(ENABLE_CLIPPER_INPUT)
   pinMode(kTestOutputPin, OUTPUT);
   // Set the LEDC peripheral to a 13-bit resolution
   ledcAttach(kTestOutputPin, kTestOutputFrequency, 13);
@@ -179,15 +193,54 @@ void setup() {
   ///////////////////////////////////////////////////////////////////
   // Clipper input feature path
 
-  ClipperInputSignals* clipper_signals =
-      SetupClipperFeature(nmea2000, true, true, kClipperHTClkPin,
-                kClipperHTDataOutPin, kClipperHTDataPin,
-                kClipperHTCSPin);
+#if defined(HAMLET_CLIPPERDUET_HAS_SPI_CAPTURE)
+  clipper_capture.Begin();
 
-  clipper_signals->depth_m.connect_to(new LambdaConsumer<float>(
-      [](float value) { clipper_depth_display = value; }));
-  clipper_signals->speed_mps.connect_to(new LambdaConsumer<float>(
-      [](float value) { clipper_speed_display = value; }));
+  event_loop()->onRepeat(5, []() {
+    uint8_t frame[hamlet::clipperduet::kFrameBufferSize] = {0};
+    size_t frame_size = 0;
+
+    if (!clipper_capture.ReadFrame(frame, &frame_size)) {
+      return;
+    }
+
+    const hamlet::clipperduet::Event event =
+        clipper_decoder.ProcessFrame(frame, frame_size, millis());
+    if (!event.valid_frame || !event.operational_mode) {
+      return;
+    }
+
+    const auto& data = clipper_decoder.data();
+    clipper_depth_display =
+        (data.depth_m == N2kDoubleNA) ? NAN : static_cast<float>(data.depth_m);
+    clipper_speed_display =
+        (data.speed_mps == N2kDoubleNA) ? NAN : static_cast<float>(data.speed_mps);
+
+    tN2kMsg msg;
+    clipper_sid = static_cast<uint8_t>((clipper_sid + 1) & 0xFF);
+
+    if (event.depth_ready) {
+      clipper_decoder.BuildWaterDepthMessage(msg, clipper_sid);
+      nmea2000->SendMsg(msg);
+    }
+
+    if (event.speed_ready) {
+      clipper_decoder.BuildBoatSpeedMessage(msg, clipper_sid);
+      nmea2000->SendMsg(msg);
+    }
+
+    if (event.distance_log_ready) {
+      // These timestamps can be wired to a real clock source later.
+      const double days_since_1970 = 0;
+      const double seconds_since_midnight = 0;
+      clipper_decoder.BuildDistanceLogMessage(msg, days_since_1970,
+                                              seconds_since_midnight);
+      nmea2000->SendMsg(msg);
+    }
+  });
+#else
+  debugE("HALMET_ClipperDuet SPI capture helper unavailable: missing ESP32SPISlave");
+#endif
 
   if (display_present) {
     event_loop()->onRepeat(1000, []() {
