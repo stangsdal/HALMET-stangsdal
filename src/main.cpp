@@ -33,6 +33,10 @@
 using namespace sensesp;
 using namespace halmet;
 
+#ifndef PROJECT_VERSION
+#define PROJECT_VERSION "0.9.0"
+#endif
+
 /////////////////////////////////////////////////////////////////////
 // Declare some global variables required for the firmware operation.
 
@@ -150,8 +154,8 @@ void setup() {
       "20231229",  // Manufacturer's Model serial code (max 32 chars)
       104,         // Manufacturer's product code
       "HALMET",    // Manufacturer's Model ID (max 33 chars)
-      "1.0.0",     // Manufacturer's Software version code (max 40 chars)
-      "1.0.0"      // Manufacturer's Model version (max 24 chars)
+      PROJECT_VERSION,  // Manufacturer's Software version code (max 40 chars)
+      PROJECT_VERSION   // Manufacturer's Model version (max 24 chars)
   );
 
   // For device class/function information, see:

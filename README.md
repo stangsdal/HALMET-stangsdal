@@ -98,7 +98,7 @@ At runtime, the Clipper pipeline consists of these layers:
 
 External module used by HALMET:
 
-- `https://github.com/stangsdal/sensesp_clipper_input`
+- `https://github.com/stangsdal/HALMET-ClipperDuet`
 
 ### Hardware Integration Notes
 
@@ -142,10 +142,10 @@ Clipper project can be considered complete for deployment when:
 
 Clipper HT1621 sniff pins are defined in `src/halmet_const.h`:
 
-- HT DATA (MOSI): GPIO 12
-- HT DATA OUT (MISO placeholder for SPI slave): GPIO 13
-- HT CLK: GPIO 14
-- HT CS: GPIO 15
+- HT DATA (MOSI): GPIO 13
+- HT DATA OUT (MISO placeholder for SPI slave): GPIO 14
+- HT CLK: GPIO 32
+- HT CS: GPIO 33
 
 CAN remains on HALMET CAN pins (RX 18, TX 19).
 
@@ -211,15 +211,9 @@ Implemented protections in the Clipper decoder path:
 - Per-signal stale decay to NA
 - Frame-quality gate requiring consecutive valid frames before publishing after startup/recovery
 
-Tunable compile-time parameters in the external Clipper module header:
-
-- `https://github.com/stangsdal/sensesp_clipper_input/blob/main/include/clipper_feature.h`
-
-- `CLIPPER_DATA_TIMEOUT_MS` (default: 5000)
-- `CLIPPER_MIN_VALID_FRAMES` (default: 3)
-- `CLIPPER_DEBUG` (optional verbose logs)
-
-Optional overrides are documented in `platformio.ini` under `env:stangsdal_clipper`.
+Decoder and capture behavior are provided by HALMET-ClipperDuet. Optional build
+flags for Clipper mode are documented in `platformio.ini` under
+`env:stangsdal_clipper`.
 
 ## Build Notes
 
@@ -234,8 +228,10 @@ For custom wiring and feature setup:
 
 - Common app/bootstrap setup: `src/main.cpp`
 - Standard mode sensor mapping: `src/standard_mode.cpp`
-- Clipper mode feature wiring lives in external module repository:
-	`https://github.com/stangsdal/sensesp_clipper_input`
+- Clipper mode wiring and publish path:
+	`src/main.cpp` (uses HALMET-ClipperDuet decoder/capture)
+
+The HALMET-ClipperDuet dependency is pinned in `platformio.ini` to `v0.1.1`.
 
 Some customizable parts are marked with `EDIT:` comments.
 

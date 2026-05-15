@@ -8,9 +8,16 @@ Mapping af HALMET inputs til:
 * NMEA 2000 standard PGN’er
 * Anbefalet anvendelse (SignalK vs N2K)
 
+Dokumentet dækker begge firmware-profiler:
+
+* `stangsdal` (standard HALMET mode)
+* `stangsdal_clipper` (Clipper Duet HT1621 sniff mode)
+
 ---
 
 ## Inputs
+
+Sektionen nedenfor gælder standard HALMET mode (`stangsdal`).
 
 ### d1 – Tachometer
 
@@ -126,6 +133,51 @@ SignalK bruger SI-enheder:
 
 * d3 Raw Water Flow
 * a1 Raw Water Temp
+
+---
+
+## Clipper Duet Mode (`stangsdal_clipper`)
+
+I Clipper mode læses værdier fra HT1621-displaybussen og publiceres direkte til
+SignalK og NMEA 2000.
+
+### SignalK Mapping (Clipper)
+
+* `environment.depth.belowKeel`
+* `navigation.speedThroughWater`
+* `navigation.trip.log`
+* `navigation.log`
+
+### NMEA 2000 Mapping (Clipper)
+
+* Water Depth
+* Boat Speed
+* Distance Log (trip/total)
+
+### Clipper Debug Telemetri (SignalK)
+
+* `sensors.clipper.debug.locked`
+* `sensors.clipper.debug.consecutiveValidFrames`
+* `sensors.clipper.debug.lastValidAge`
+
+### HT1621 Pin Mapping (Clipper)
+
+Pins defineret i `src/halmet_const.h`:
+
+* HT DATA (MOSI): GPIO 13
+* HT DATA OUT (MISO): GPIO 14
+* HT CLK: GPIO 32
+* HT CS: GPIO 33
+
+CAN forbliver:
+
+* RX: GPIO 18
+* TX: GPIO 19
+
+### Dependency Note
+
+Clipper mode bygger på HALMET-ClipperDuet biblioteket, pinned i
+`platformio.ini` til `v0.1.1`.
 
 ---
 
