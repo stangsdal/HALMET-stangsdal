@@ -48,6 +48,25 @@ static void DrawSignalKIcon(Adafruit_SSD1306* display, int x, int y,
   }
 }
 
+/// Draw a compact Clipper status icon (12x14 pixels)
+static void DrawClipperIcon(Adafruit_SSD1306* display, int x, int y,
+                            bool connected) {
+  const int color = SSD1306_WHITE;
+
+  // Stylized "C" glyph.
+  display->drawLine(x + 2, y + 2, x + 7, y + 2, color);
+  display->drawLine(x + 2, y + 11, x + 7, y + 11, color);
+  display->drawLine(x + 2, y + 2, x + 2, y + 11, color);
+
+  // Status indicator dot (top-right)
+  if (connected) {
+    display->fillCircle(x + 9, y + 2, 1, color);
+    display->drawCircle(x + 9, y + 2, 2, color);
+  } else {
+    display->drawCircle(x + 9, y + 2, 1, color);
+  }
+}
+
 bool InitializeSSD1306(const std::shared_ptr<sensesp::SensESPBaseApp> sensesp_app,
                        Adafruit_SSD1306** display, TwoWire* i2c) {
   *display = new Adafruit_SSD1306(kScreenWidth, kScreenHeight, i2c, -1);
@@ -74,7 +93,7 @@ void ClearRow(Adafruit_SSD1306* display, int row) {
 }
 
 void PrintStatusLine(Adafruit_SSD1306* display, bool signalk_connected,
-                     bool ds1603_connected) {
+                     bool ds1603_connected, bool clipper_connected) {
   ClearRow(display, 0);
 
   // Status band is at the bottom (y=48-63). Add offset to all y coordinates.
@@ -114,8 +133,12 @@ void PrintStatusLine(Adafruit_SSD1306* display, bool signalk_connected,
   const int sk_x = 20;
   DrawSignalKIcon(display, sk_x, status_y_offset + 2, signalk_connected);
 
+  // Clipper status icon with on/off indicator.
+  const int clipper_x = 38;
+  DrawClipperIcon(display, clipper_x, status_y_offset + 2, clipper_connected);
+
   // Fuel sensor icon for DS1603L: pump body + hose/nozzle.
-  const int fuel_x = 56;
+  const int fuel_x = 72;
   const int fuel_bottom = status_y_offset + 15;
   const int fuel_top = fuel_bottom - 10;
   display->drawRect(fuel_x + 1, fuel_top, 8, 11, SSD1306_WHITE);      // pump body

@@ -19,6 +19,7 @@
 #include "sensesp/net/discovery.h"
 #include "sensesp/system/lambda_consumer.h"
 #include "sensesp/system/system_status_led.h"
+#include "sensesp/ui/status_page_item.h"
 #include "sensesp_app_builder.h"
 #define BUILDER_CLASS SensESPAppBuilder
 
@@ -52,10 +53,13 @@ bool alarm_states[4] = {false, false, false, false};
 float clipper_depth_display = NAN;
 float clipper_speed_display = NAN;
 bool ds1603_connected_display = false;
+bool clipper_connected_display = false;
 
 #ifdef ENABLE_CLIPPER_INPUT
 hamlet::clipperduet::Decoder clipper_decoder;
 uint8_t clipper_sid = 0;
+uint32_t clipper_last_operational_ms = 0;
+sensesp::StatusPageItem<String>* clipper_status_item = nullptr;
 #if defined(HAMLET_CLIPPERDUET_HAS_SPI_CAPTURE)
 hamlet::clipperduet::Esp32SpiCapture clipper_capture({
   static_cast<int8_t>(kClipperHTClkPin),
@@ -189,11 +193,15 @@ void setup() {
   if (display_present && ws_client != nullptr) {
     event_loop()->onRepeat(1000, [ws_client]() {
       PrintStatusLine(display, ws_client->is_connected(),
-                      ds1603_connected_display);
+                      ds1603_connected_display, clipper_connected_display);
     });
   }
 
 #ifdef ENABLE_CLIPPER_INPUT
+  clipper_status_item =
+      new sensesp::StatusPageItem<String>("Clipper", "OFF", "Integrations",
+                                          1210);
+
   ///////////////////////////////////////////////////////////////////
   // Clipper input feature path
 
@@ -213,6 +221,8 @@ void setup() {
     if (!event.valid_frame || !event.operational_mode) {
       return;
     }
+
+    clipper_last_operational_ms = millis();
 
     const auto& data = clipper_decoder.data();
     clipper_depth_display =
@@ -242,8 +252,20 @@ void setup() {
       nmea2000->SendMsg(msg);
     }
   });
+
+  event_loop()->onRepeat(500, []() {
+    clipper_connected_display =
+        (clipper_last_operational_ms != 0) &&
+        (static_cast<uint32_t>(millis() - clipper_last_operational_ms) < 3000);
+    if (clipper_status_item != nullptr) {
+      clipper_status_item->set(clipper_connected_display ? "ON" : "OFF");
+    }
+  });
 #else
   debugE("HALMET_ClipperDuet SPI capture helper unavailable: missing ESP32SPISlave");
+  if (clipper_status_item != nullptr) {
+    clipper_status_item->set("UNAVAILABLE");
+  }
 #endif
 
   if (display_present) {

@@ -14,7 +14,7 @@ bool InitializeSSD1306(const std::shared_ptr<sensesp::SensESPBaseApp> sensesp_ap
 void ClearRow(Adafruit_SSD1306* display, int row);
 
 void PrintStatusLine(Adafruit_SSD1306* display, bool signalk_connected,
-                     bool ds1603_connected);
+                     bool ds1603_connected, bool clipper_connected = false);
 
 void PrintValue(Adafruit_SSD1306* display, int row, String title, float value);
 void PrintValue(Adafruit_SSD1306* display, int row, String title, String value);
